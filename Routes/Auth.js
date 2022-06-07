@@ -108,6 +108,13 @@ router.post("/createuser", [
 router.post("/confirm-email/:token", [             //Validations
     body('password', 'Min length 8 required').isLength({ min: 8 })
 ], async (req, res) => {
+
+    const errors = validationResult(req);    // If Error Then store all errors in the array
+    if (!errors.isEmpty()) {                 // If not empty then send all the errors as an ARRAY
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+
     const token2 = req.params.token;               // Recive token from url parameter
     const user = jwt.verify(token2, JWT_SECRET);   // decode token in recived for retreiving the information.
     const token = jwt.sign({ user: { id: user.data.email } }, JWT_SECRET);   // Create A JWT with the payload and the JWT_SECRET for user id.
@@ -130,8 +137,7 @@ router.post("/confirm-email/:token", [             //Validations
                 email: user.data.email,
                 password: hash,
                 token: token,
-                id: user.data.email,
-                seckey: JWT_SECRET
+                id: user.data.email
             });
             res.status(200).json({ "msg": token })
             // In the response sent the token.
@@ -139,6 +145,109 @@ router.post("/confirm-email/:token", [             //Validations
         })
     }
 })
+
+
+router.post("/login",[
+    body('email', 'Invalid Email').isEmail(),
+    body('password', 'min length 8 required').isLength({ min: 8 }),    // Validations
+],async (req,res)=>{
+
+    const errors = validationResult(req);    // If Error Then store all errors in the array
+    if (!errors.isEmpty()) {                 // If not empty then send all the errors as an ARRAY
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const user = await User.findOne({email:req.body.email});
+    if(!user){
+        res.status(400).send({err:"User Not Exisited"});
+    }
+    else{
+        bcrypt.compare(req.body.password,user.password,(err,result)=>{
+            if(result){
+                res.status(200).send({token:user.token});
+            }
+            else{
+                res.status(403).send({msg:"Invalid password"});
+            }
+        })
+    }
+})
+
+router.post("/resetpassword-email",[
+    body("email").isEmail()
+],async (req,res)=>{
+    const errors = validationResult(req);    // If Error Then store all errors in the array
+    if (!errors.isEmpty()) {                 // If not empty then send all the errors as an ARRAY
+        return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const user = await User.findOne({email:req.body.email});
+    if(!user){
+        res.status(400).send({"msg":"User Not Exisited"});
+    }
+    else{
+        var mailOptions = {
+            from: 'cybermessagehub@gmail.com',             // Sender Email
+            to: req.body.email,                             // Email requested by user
+            subject: 'Email Confirmation Mail',         // Subject Of The Mail
+            text: `Hello ${user.name}, Somebody requested a new password for the https://campus-olx.com account associated with ${user.email}.\n\n No changes have been made to your account yet.\n\nYou can reset your password by clicking the link below:\nhttp://localhost:5000/api/auth/resettingpassword/${user.email}/${user.token}  \n\nIf you did not request a new password, please let us know immediately by replying to this email.\n\n Yours, \n The CyberHubMessage team`,
+            //Custom Mail Message With the link to confirm email address (The link contain the user id and token corresponding)
+        };
+
+        transporter.sendMail(mailOptions, function (error, info) {  // Reciving Conformation Of Sent Mail
+            if (error) {
+                console.log(error);
+            } else {
+                res.status(200).json({ "msg": "Email sent" });
+            }
+        });
+
+
+        console.log("Email Sent");
+    }
+})
+
+
+router.patch("/resettingpassword/:email/:token",[
+    body('password', 'Min length 8 required').isLength({ min: 8 })
+],async (req,res)=>{
+    const errors = validationResult(req);    // If Error Then store all errors in the array
+    if (!errors.isEmpty()) {                 // If not empty then send all the errors as an ARRAY
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const token = req.params.token;
+    const email = req.params.email;
+    const m = await User.findOne({email:email});
+    
+    
+    try{
+        const decode = jwt.verify(token,m.seckey );
+
+        const user = await User.findOne({email:decode.user.id});
+        if(!user){
+            res.status(400).send("User Doesn't Exists");
+        }
+
+        else{
+            const seckey = user.seckey+req.body.password;
+            const newtoken = jwt.sign({ user: { id: user.email } }, seckey); 
+            bcrypt.hash(req.body.password,saltRounds,async(err,hash)=>{
+                if(err){
+                    res.status(400).send({err})
+                }
+                else{
+                    const x = await User.findByIdAndUpdate(user._id,{password:hash,token:newtoken,seckey:seckey});
+                    res.status(200).send({msg:"Password Reset Successfully"})
+                }
+            })
+        }
+    }catch(err){
+        res.status(404).send("Link Expired");
+    }
+})
+
+
+
 
 
 
