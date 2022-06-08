@@ -12,6 +12,11 @@ const mongoose = require("mongoose");   // Helps to handle mongodb operations
 
 const User = require("../Models/User");
 
+const {google} = require('googleapis');
+
+const oAuthClient = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CLIENT_SECRET,process.env.REDIRECT_URI )
+oAuthClient.setCredentials({refresh_token:process.env.REFRESH_TOKEN})
+
 
 
 
@@ -40,16 +45,58 @@ const JWT_SECRET = process.env.JWT_SECRET;    // JWT secret from .env file
 
 
 
-var transporter = nodemailer.createTransport({        // function to send mail to register user
-    service: 'gmail',     // mail sending platform
-    auth: {
-        user: 'cybermessagehub@gmail.com',    // Sender Mail Address
-        pass: process.env.EMAIL_PASSWORD    // Sender Mail Password
+// var transporter = nodemailer.createTransport({        // function to send mail to register user
+//     service: 'gmail',     // mail sending platform
+//     auth: {
+//         user: 'cybermessagehub@gmail.com',    // Sender Mail Address
+//         pass: process.env.EMAIL_PASSWORD    // Sender Mail Password
+//     }
+// });
+
+
+
+async function sendEmail(email,body,subject){
+
+    try{
+        const accessToken = await oAuthClient.getAccessToken();
+        var transporter = nodemailer.createTransport({        // function to send mail to register user
+            service: 'gmail',     // mail sending platform
+            auth: {
+                type:'OAuth2',
+                user: 'innovatorsolx@gmail.com',    // Sender Mail Address
+                pass: process.env.EMAIL_PASSWORD,   // Sender Mail Password
+                clientId: process.env.CLIENT_ID, 
+                clientSecret: process.env.CLIENT_SECRET,
+                refreshToken: process.env.REFRESH_TOKEN,
+                accessToken: accessToken
+            }
+        });
+
+        var mailOptions = {
+            from: 'cybermessagehub@gmail.com',             // Sender Email
+            to: email,                             // Email requested by user
+            subject: subject,         // Subject Of The Mail
+            text: body,
+            //Custom Mail Message With the link to confirm email address (The link contain the user id and token corresponding)
+        };
+
+
+        transporter.sendMail(mailOptions, function (error, info) {  // Reciving Conformation Of Sent Mail
+            if (error) {
+                console.log(error);
+            } else {
+                res.status(200).json({ "msg": "Email sent" });
+            }
+        });
+
+
+    }catch(err){
+        return err;
     }
-});
 
 
 
+}
 
 
 
@@ -81,25 +128,12 @@ router.post("/createuser", [
             }
         }, JWT_SECRET);
 
-
-        var mailOptions = {
-            from: 'cybermessagehub@gmail.com',             // Sender Email
-            to: req.body.email,                             // Email requested by user
-            subject: 'Email Confirmation Mail',         // Subject Of The Mail
-            text: `Hello ${req.body.name}, Thank you for showing intrest in https://campus-olx.in . To finish signing up, you just need to confirm your email by clicking the link below.\n\nhttp://localhost:5000/api/auth/confirm-email/${token2} `,
-            //Custom Mail Message With the link to confirm email address (The link contain the user id and token corresponding)
-        };
-
-        transporter.sendMail(mailOptions, function (error, info) {  // Reciving Conformation Of Sent Mail
-            if (error) {
-                console.log(error);
-            } else {
-                res.status(200).json({ "msg": "Email sent" });
-            }
-        });
-
-
+        const body = `Hello ${req.body.name}, Thank you for showing intrest in https://campus-olx.in . To finish signing up, you just need to confirm your email by clicking the link below.\n\nhttp://localhost:5000/api/auth/confirm-email/${token2} `
+        const email = req.body.email;
+        const subject = 'Email Confirmation Mail'
+        sendEmail(email,body,subject)
         console.log("Email Sent");
+        res.send("Email Sent SuccessFully")
     };
 }
 );
@@ -186,24 +220,13 @@ router.post("/resetpassword-email",[
         res.status(400).send({"msg":"User Not Exisited"});
     }
     else{
-        var mailOptions = {
-            from: 'cybermessagehub@gmail.com',             // Sender Email
-            to: req.body.email,                             // Email requested by user
-            subject: 'Email Confirmation Mail',         // Subject Of The Mail
-            text: `Hello ${user.name}, Somebody requested a new password for the https://campus-olx.com account associated with ${user.email}.\n\n No changes have been made to your account yet.\n\nYou can reset your password by clicking the link below:\nhttp://localhost:5000/api/auth/resettingpassword/${user.email}/${user.token}  \n\nIf you did not request a new password, please let us know immediately by replying to this email.\n\n Yours, \n The CyberHubMessage team`,
-            //Custom Mail Message With the link to confirm email address (The link contain the user id and token corresponding)
-        };
 
-        transporter.sendMail(mailOptions, function (error, info) {  // Reciving Conformation Of Sent Mail
-            if (error) {
-                console.log(error);
-            } else {
-                res.status(200).json({ "msg": "Email sent" });
-            }
-        });
-
-
+        const body = `Hello ${user.name}, Somebody requested a new password for the https://campus-olx.com account associated with ${user.email}.\n\n No changes have been made to your account yet.\n\nYou can reset your password by clicking the link below:\nhttp://localhost:5000/api/auth/resettingpassword/${user.email}/${user.token}  \n\nIf you did not request a new password, please let us know immediately by replying to this email.\n\n Yours, \nThe Campus Olx Team`
+        const email = req.body.email;
+        const subject = 'Password Change Request'
+        sendEmail(email,body,subject)
         console.log("Email Sent");
+        res.send("Email Sent SuccessFully")
     }
 })
 
