@@ -260,6 +260,37 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {
 });
 
 
+router.get("/addToFavorite/:id",fetchuser, async (req, res)=>{
+    const item_id = req.params.id;
+    const item = await Item.findById(item_id);
+    const user_email = req.user.id;
+    const user = await User.findOne({email:user_email});
+
+    if(!item){
+        res.status(404).send("Item Not Found");
+    }
+    else{
+        if(item.ownerDetails.ownerEmail !== user_email){
+            res.status(403).send("This Item Doesn't Belongs To You.");
+        }
+        else{
+            const isFound = (item.intrestedPeople.find(x => x === user.email));
+            if(isFound===undefined){
+                const item = await Item.findByIdAndUpdate(item_id, { $push: { intrestedPeople: user.email } })
+                const user_liked = await User.findByIdAndUpdate(user._id,{ $push: {item_liked:item_id}});
+                res.status(200).json({ "msg": "successfully liked." })
+            }
+            else{
+                const item = await Item.findByIdAndUpdate(item_id, { $pull: { intrestedPeople: user.email } })
+                const user_liked = await User.findByIdAndUpdate(user._id,{ $pull: {item_liked:item_id}});
+                res.status(200).json({ "msg": "successfully disliked." })
+            }
+        }
+    }
+
+})
+
+
 
 module.exports = router;
 

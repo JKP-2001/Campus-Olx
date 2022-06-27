@@ -14,7 +14,7 @@ const itemSchema = new mongoose.Schema({
     },
 
     img_address:{type:String,required:true},
-    intrestedPeople:[{type:mongoose.Schema.Types.ObjectId,default:[]}],
+    intrestedPeople:[{type:String,default:[]}],
     creation_date:{type:String,required:true},
     creation_time:{type:String,required:true},
     getFull:{type:String},
