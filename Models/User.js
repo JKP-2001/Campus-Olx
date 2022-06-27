@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     password:{type:String,required:true},
     token:{type:String,required:true},
     seckey:{type:String,required:true,default:process.env.JWT_SECRET},
+    contact:{type:String,required:true}
 })
 
 

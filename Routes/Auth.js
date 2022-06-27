@@ -73,7 +73,7 @@ async function sendEmail(email,body,subject){
         });
 
         var mailOptions = {
-            from: 'cybermessagehub@gmail.com',             // Sender Email
+            from: 'innovatorsolx@gmail.com',             // Sender Email
             to: email,                             // Email requested by user
             subject: subject,         // Subject Of The Mail
             text: body,
@@ -125,6 +125,7 @@ router.post("/createuser", [
             data: {
                 name: req.body.name,
                 email: req.body.email,
+                contact: req.body.contact,
             }
         }, JWT_SECRET);
 
@@ -132,7 +133,7 @@ router.post("/createuser", [
         const email = req.body.email;
         const subject = 'Email Confirmation Mail'
         sendEmail(email,body,subject)
-        console.log("Email Sent");
+        
         res.send("Email Sent SuccessFully")
     };
 }
@@ -171,7 +172,8 @@ router.post("/confirm-email/:token", [             //Validations
                 email: user.data.email,
                 password: hash,
                 token: token,
-                id: user.data.email
+                id: user.data.email,
+                contact: user.data.contact
             });
             res.status(200).json({ "msg": token })
             // In the response sent the token.
