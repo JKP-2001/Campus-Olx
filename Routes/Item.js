@@ -15,6 +15,9 @@ const { body, validationResult } = require('express-validator');
 
 const multer = require("multer");
 const fs = require("fs");
+const saltRounds = 10;
+
+const bcrypt = require("bcrypt");
 
 
 const image_storage = multer.diskStorage({
@@ -45,6 +48,18 @@ const image_upload = multer({
         }
     }
 }).single("Image");
+
+
+const getUserItems = async (item_array) => {
+    var result = [];
+
+    for (var i = 0; i < item_array.length; i++) {
+        const item = await Item.findById(item_array[i]);
+        result.push(item);
+    }
+
+    return result;
+}
 
 
 
@@ -184,7 +199,7 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {
     console.log(item);
 
 
-    
+
 
 
     if (!item) {
@@ -209,7 +224,7 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {
                     var date = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
                     img_path = old_path;
 
-                    Item.findByIdAndUpdate(item_id , { brand: req.body.brand, description: req.body.description, img_address: img_path, price:req.body.price, updation_date: date, updation_time: time }, (err) => {
+                    Item.findByIdAndUpdate(item_id, { brand: req.body.brand, description: req.body.description, img_address: img_path, price: req.body.price, updation_date: date, updation_time: time }, (err) => {
                         if (err) {
                             res.send(err);
                         }
@@ -240,9 +255,9 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {
                     var full = (today.getMonth() + 1) + " " + today.getDate() + ", " + today.getFullYear() + " " + time;
                     console.log(req.file);
 
-                    
 
-                    Item.updateOne({ _id: item_id }, { brand: brand, description: description, img_address: img_path, price:price, updation_date: date, updation_time: time }, (err) => {
+
+                    Item.updateOne({ _id: item_id }, { brand: brand, description: description, img_address: img_path, price: price, updation_date: date, updation_time: time }, (err) => {
                         if (err) {
                             res.send(err);
                         }
@@ -260,34 +275,92 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {
 });
 
 
-router.get("/addToFavorite/:id",fetchuser, async (req, res)=>{
+router.get("/addToFavorite/:id", fetchuser, async (req, res) => {
     const item_id = req.params.id;
     const item = await Item.findById(item_id);
     const user_email = req.user.id;
-    const user = await User.findOne({email:user_email});
+    const user = await User.findOne({ email: user_email });
 
-    if(!item){
+    if (!item) {
         res.status(404).send("Item Not Found");
     }
-    else{
-        if(item.ownerDetails.ownerEmail !== user_email){
-            res.status(403).send("This Item Doesn't Belongs To You.");
+    else {
+        if (item.ownerDetails.ownerEmail === user_email) {
+            res.status(403).send("Cannot Like You Own Post.");
         }
-        else{
+        else {
             const isFound = (item.intrestedPeople.find(x => x === user.email));
-            if(isFound===undefined){
+            if (isFound === undefined) {
                 const item = await Item.findByIdAndUpdate(item_id, { $push: { intrestedPeople: user.email } })
-                const user_liked = await User.findByIdAndUpdate(user._id,{ $push: {item_liked:item_id}});
+                const user_liked = await User.findByIdAndUpdate(user._id, { $push: { item_liked: item_id } });
                 res.status(200).json({ "msg": "successfully liked." })
             }
-            else{
+            else {
                 const item = await Item.findByIdAndUpdate(item_id, { $pull: { intrestedPeople: user.email } })
-                const user_liked = await User.findByIdAndUpdate(user._id,{ $pull: {item_liked:item_id}});
+                const user_liked = await User.findByIdAndUpdate(user._id, { $pull: { item_liked: item_id } });
                 res.status(200).json({ "msg": "successfully disliked." })
             }
         }
     }
 
+})
+
+
+router.get("/getOwnerDetails/:id", fetchuser, async (req, res) => {
+    const item_id = req.params.id;
+    const item = await Item.findById(item_id);
+    if (!item) {
+        res.status(404).send("Item Not Found");
+    }
+    else {
+        const details = item.ownerDetails;
+        res.status(200).send(details);
+    }
+});
+
+
+router.get("/userLikedItems", fetchuser, async (req, res) => {
+    const user_email = req.user.id;
+    const user = await User.findOne({ email: user_email });
+    const result = await getUserItems(user.item_liked);
+    res.status(200).send(result);
+});
+
+
+router.patch("/change_password",fetchuser, async (req, res)=>{
+    const user_email = req.user.id;
+    const user = await User.findOne({ email: user_email });
+    
+    const old_pass = req.body.password;
+    const new_pass = req.body.new_password;
+    const confirm_pass = req.body.confirm_password;
+
+
+    bcrypt.compare(old_pass, user.password, async (err, result)=>{
+        if(err){
+            res.status(400).send(err);
+        }
+        else if(!result){
+            res.status(403).send("Incorrect Password Entered");
+        }
+        else{
+            if (new_pass === confirm_pass){
+                bcrypt.hash(new_pass, saltRounds, async function(err, hash){
+                    if(err){
+                        res.send(err);
+                    }
+                    else{
+                        const result = await User.findByIdAndUpdate(user._id,{password:hash});
+                        res.status(200).send("Success");
+                    }
+                })
+            }
+            else{
+                res.status(401).send("Both Password Doesn't Matched");
+            }
+        }
+    })
+    
 })
 
 

@@ -16,7 +16,7 @@ const fetchuser = (req,res,next) =>{
         }
     }
     else{
-        res.status(400).send("Token Not Found");
+        res.status(400).send("User Is Not Logged In");
     }
 };
 
