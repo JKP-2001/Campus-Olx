@@ -32,7 +32,9 @@ app.use('/uploads', express.static('uploads'));
 
 
 
-app.use("/api/auth",require("./Routes/Auth"))
+app.use("/api/auth",require("./Routes/Auth"));
+app.use("/api/item",require("./Routes/Item"))
+app.use("/api/query",require("./Routes/ContactUs"))
 
 
 app.get("/",function(req,res){
