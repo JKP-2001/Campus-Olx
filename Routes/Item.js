@@ -1,4 +1,3 @@
-
 require("dotenv").config()
 
 const express = require("express");    // Intializing The Express environment
@@ -7,7 +6,7 @@ const jwt = require("jsonwebtoken");    //Fecthing JWt from npm
 const router = express.Router();          // Router used to route diffrent paths in a single file
 const bcrypt = require("bcrypt");    // Package use to hash a password string.
 
-const Item = require("../Models/Items");  // Fetching The Item Schema
+const Item = require("../Models/Item");  // Fetching The Item Schema
 const fetchuser = require("../Middleware/fetchuser");   // Fetching MiddleWare To Check The Login Status
 const User = require("../Models/User");  // Fetching The User Schema
 
@@ -392,5 +391,4 @@ router.patch("/change_password",fetchuser, async (req, res)=>{        // Changin
 
 
 module.exports = router;
-
 
