@@ -33,6 +33,7 @@ const { body, validationResult } = require('express-validator'); // It helps to 
 var jwt = require('jsonwebtoken');   // Module For generation of JWT by giving signature and Payload data
 
 var nodemailer = require('nodemailer');   // Module to send mail to register user.
+const fetchuser = require("../Middleware/fetchuser");
 
 
 const JWT_SECRET = process.env.JWT_SECRET;    // JWT secret from .env file
@@ -268,6 +269,22 @@ router.patch("/resettingpassword/:email/:token",[
         }
     }catch(err){
         res.status(404).send("Link Expired");
+    }
+})
+
+
+router.get("/getuser", fetchuser, async (req, res)=>{
+    const email = req.user.id;
+    try{
+        const user = await User.find({email:email}).select("-password -seckey -token");
+        if(user){
+            res.status(200).send(user);
+        }
+        else{
+            res.status(404).send("User Not Found")
+        }
+    }catch(err){
+        res.status(400).send(err);
     }
 })
 
