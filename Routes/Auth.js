@@ -280,4 +280,4 @@ router.patch("/resettingpassword/:email/:token",[
 
 
 
-module.exports = router;
+module.exports = router;   //router
