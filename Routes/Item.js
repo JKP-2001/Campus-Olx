@@ -67,6 +67,19 @@ const getUserItems = async (item_array) => {        // function to fetch all the
 
 
 
+const convertEmail = async (item_array) => {
+    var result = [];
+
+    for (var i = 0; i < item_array.length; i++) {
+        const item = await User.findOne({email:item_array[i]});    // finding the item corresponding to the item_id 
+        result.push(item);    //Pushing the item into result array.
+    }
+
+    return result;
+}
+
+
+
 
 router.post("/newItem/:cat", fetchuser, async (req, res) => {           // POST function post a new Item.
 
@@ -115,6 +128,7 @@ router.post("/newItem/:cat", fetchuser, async (req, res) => {           // POST 
                 owner: user.name,
                 contact: user.contact,
                 ownerEmail: user.email,
+                hostel:user.hostel,
             };
             const creation_time = time;
             const creation_date = date;
@@ -188,7 +202,7 @@ router.delete("/delItem/:id", fetchuser, async (req, res) => {       // Deleting
 
 router.get("/getItem/:id", fetchuser, async (req, res) => {         // getting item from the id of the item.
     const id = req.params.id;                    // id of item is in the parameter.
-    const item = await Item.findById(id);        // finding Item in the DB.
+    const item = await Item.find({_id:id});        // finding Item in the DB.
 
     if (item) {
         res.status(200).send(item);
@@ -242,7 +256,7 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {       // edit a p
                     
                     // Updating the corresponding item, by providing data from the form.
 
-                    Item.findByIdAndUpdate(item_id, { brand: req.body.brand, description: req.body.description, img_address: img_path, price: req.body.price, updation_date: date, updation_time: time }, (err) => {
+                    Item.findByIdAndUpdate(item_id, { category:req.body.category,brand: req.body.brand, description: req.body.description, img_address: img_path, price: req.body.price, updation_date: date, updation_time: time, originalBuyingDate:req.body.buyingDate}, (err) => {
                         if (err) {
                             res.send(err);
                         }
@@ -276,7 +290,7 @@ router.patch("/editItem/:id", fetchuser, async (req, res) => {       // edit a p
 
                     // Updating the corresponding item, by providing data from the form.
 
-                    Item.updateOne({ _id: item_id }, { brand: brand, description: description, img_address: img_path, price: price, updation_date: date, updation_time: time }, (err) => {
+                    Item.updateOne({ _id: item_id }, { category:req.body.category,brand: req.body.brand, description: req.body.description, img_address: img_path, price: req.body.price, updation_date: date, updation_time: time, originalBuyingDate:req.body.buyingDate }, (err) => {
                         if (err) {
                             res.send(err);
                         }
@@ -367,7 +381,7 @@ router.patch("/change_password",fetchuser, async (req, res)=>{        // Changin
             res.status(400).send(err);
         }
         else if(!result){           // if password not matched
-            res.status(403).send("Incorrect Password Entered");
+            res.status(403).send({msg:"Incorrect Password Entered"});
         }
         else{   // If password Matched
             if (new_pass === confirm_pass){     // If new password matched with confirm password.
@@ -377,12 +391,12 @@ router.patch("/change_password",fetchuser, async (req, res)=>{        // Changin
                     }
                     else{
                         const result = await User.findByIdAndUpdate(user._id,{password:hash});   // Updating the new password in the DB.
-                        res.status(200).send("Success");
+                        res.status(200).send({msg:"Success"});
                     }
                 })
             }
             else{
-                res.status(401).send("Both Password Doesn't Matched");    // If new password not matched with confirm password.
+                res.status(401).send({msg:"Both Password Doesn't Matched"});    // If new password not matched with confirm password.
             }
         }
     })
@@ -399,12 +413,57 @@ router.get("/user-items",fetchuser, async (req, res)=>{
             owner:user.name,
             contact:user.contact,
             ownerEmail:user.email,
+            hostel:user.hostel
         }
 
-        const item = await User.findOne({ownerDetails:details});
+        const item = await Item.find({ownerDetails:details});
         res.status(200).send(item);
     }catch(err){
         res.status(400).send(err);
+    }
+})
+
+
+router.get("/isLiked/:id",fetchuser, async (req, res)=>{
+    const email = req.user.id;
+    const id = req.params.id;
+    try{
+        const user = await User.findOne({ email: email});
+        const item = await Item.findById(id);
+        const intrestedPeople = item.intrestedPeople;
+        var x = -1;
+        for(var i=0;i<intrestedPeople.length;i++){
+            if(intrestedPeople[i]===email){
+                x = 1;
+                break;
+            }
+        }
+
+        if(x==1){
+            res.status(200).send({msg:"Found"});
+        }
+        else{
+            res.status(403).send({msg:"Not Found"});
+        }
+
+    }catch(err){
+        res.status(400).send(err);
+    }
+})
+
+
+router.get("/getLikedBy/:id",fetchuser,async(req,res)=>{
+    const id = req.params.id;
+
+    const item = await Item.findById(id);
+
+    if(!item){
+        res.status(400).send({msg:"Not Found"});
+    }
+    else{
+        const likedBy = item.intrestedPeople;
+        const x = await convertEmail(likedBy);
+        res.status(200).send(x);
     }
 })
 

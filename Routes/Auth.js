@@ -11,6 +11,7 @@ const express = require("express");
 const mongoose = require("mongoose");   // Helps to handle mongodb operations
 
 const User = require("../Models/User");
+const Items = require("../Models/Items");
 
 const {google} = require('googleapis');
 
@@ -18,6 +19,35 @@ const oAuthClient = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CL
 oAuthClient.setCredentials({refresh_token:process.env.REFRESH_TOKEN})
 
 
+const multer = require("multer");   // Package used to deal with files.
+const fs = require("fs");       // Help to manage, access and edit file in a folder.
+
+const image_storage = multer.diskStorage({        // function for a image storage
+    destination: function (req, file, cb) {     // setting destination
+        cb(null, "./uploads")
+    },
+    filename: function (req, file, cb) {        // setting specification of file
+        var today = new Date();
+        var time = today.getHours() + "-" + today.getMinutes() + "-" + today.getSeconds();
+        var date = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
+        var x = time + "-" + date;
+        cb(null, x + "-" + file.originalname);
+
+    }
+})
+
+
+const image_upload = multer({    //function to upload image in the destination
+    storage: image_storage, limits: { fileSize: 1024 * 1024 * 5 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype == "image/png" || file.mimetype == "image/jpg" || file.mimetype == "image/jpeg") {
+            cb(null, true);
+        } else {
+            cb(null, false);
+            return cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+}).single("Image");
 
 
 
@@ -52,7 +82,24 @@ const JWT_SECRET = process.env.JWT_SECRET;    // JWT secret from .env file
 //         user: 'cybermessagehub@gmail.com',    // Sender Mail Address
 //         pass: process.env.EMAIL_PASSWORD    // Sender Mail Password
 //     }
+
 // });
+
+
+
+const changeContact = async (arr,newContact,email,name,hostel)=>{
+    for(var i=0;i<arr.length;i++){
+        const x = await Items.findByIdAndUpdate(arr[i]._id,{
+            ownerDetails:{
+                owner:name,
+                contact:newContact, 
+                ownerEmail:email,
+                hostel:hostel
+            } 
+        })
+
+    }
+}
 
 
 
@@ -60,6 +107,7 @@ async function sendEmail(email,body,subject){
 
     try{
         const accessToken = await oAuthClient.getAccessToken();
+        // console.log("access token =",accessToken);
         var transporter = nodemailer.createTransport({        // function to send mail to register user
             service: 'gmail',     // mail sending platform
             auth: {
@@ -82,17 +130,17 @@ async function sendEmail(email,body,subject){
         };
 
 
-        transporter.sendMail(mailOptions, function (error, info) {  // Reciving Conformation Of Sent Mail
+        transporter.sendMail(mailOptions, function (error, info,req,res) {  // Reciving Conformation Of Sent Mail
             if (error) {
-                console.log(error);
+                console.log({error});
             } else {
-                res.status(200).json({ "msg": "Email sent" });
+                console.log("Success");
             }
         });
 
 
     }catch(err){
-        return err;
+        console.log("err = ",err);
     }
 
 
@@ -113,11 +161,15 @@ router.post("/createuser", [
     }
 
 
-    let user = await User.findOne({ email: req.body.email });    // Found If The User With Same Email id existed or not.
+    let user = await User.findOne({ email: req.body.email});    // Found If The User With Same Email id existed or not.
+    let user2 = await User.findOne({contact:req.body.contact })
 
 
     if (user) {                         // If User Already Exists then send the corresponding message
         res.status(401).json({ "msg": "User Already Existed" });
+    }
+    else if(user2){
+        res.status(402).json({ "msg": "Phone Number Already registered." });
     }
 
     else {                           // If Not Then 
@@ -130,12 +182,11 @@ router.post("/createuser", [
             }
         }, JWT_SECRET);
 
-        const body = `Hello ${req.body.name}, Thank you for showing intrest in https://campus-olx.in . To finish signing up, you just need to confirm your email by clicking the link below.\n\nhttp://localhost:5000/api/auth/confirm-email/${token2} `
+        const body = `Hello ${req.body.name}, Thank you for showing intrest in https://campus-olx.in . To finish signing up, you just need to confirm your email by clicking the link below.\n\nhttp://localhost:3000/set-password/${token2} `
         const email = req.body.email;
         const subject = 'Email Confirmation Mail'
         sendEmail(email,body,subject)
-        
-        res.send("Email Sent SuccessFully")
+        res.status(200).send("Email Sent SuccessFully")
     };
 }
 );
@@ -196,7 +247,7 @@ router.post("/login",[
 
     const user = await User.findOne({email:req.body.email});
     if(!user){
-        res.status(400).send({err:"User Not Exisited"});
+        res.status(402).send({err:"User Not Exisited"});
     }
     else{
         bcrypt.compare(req.body.password,user.password,(err,result)=>{
@@ -289,7 +340,58 @@ router.get("/getuser", fetchuser, async (req, res)=>{
 })
 
 
+router.get("/getuser/:id", fetchuser, async (req, res)=>{
+    const email = req.params.id;
+    try{
+        const user = await User.find({_id:email}).select("-password -seckey -token");
+        if(user){
+            res.status(200).send(user);
+        }
+        else{
+            res.status(404).send("User Not Found")
+        }
+    }catch(err){
+        res.status(400).send(err);
+    }
+})
 
+
+router.patch("/edit-details",fetchuser, async (req, res)=>{
+    const email = req.user.id;
+    const user = await User.findOne({email:email});
+    const otherUser = await User.findOne({contact:req.body.contact})
+    if(!user){
+        res.status(400).send("User Not Found.");
+    }
+    if(req.body.contact === user.contact || !otherUser){
+        const details = {
+            owner:user.name,
+            contact:user.contact,
+            ownerEmail:email,
+            hostel:user.hostel,
+        }
+
+        const x = await User.findByIdAndUpdate(user._id,{
+            name:req.body.name,
+            contact:req.body.contact,
+            hostel:req.body.hostel
+        })
+
+        
+
+        const item = await Items.find({ownerDetails:details});
+        console.log(item)
+
+        const y = await changeContact(item,req.body.contact,user.email,req.body.name,req.body.hostel);
+
+        const usernew = await User.find({email:email});
+
+        res.status(200).send(usernew);
+    }
+    else{
+        res.status(403).send({msg:"Phone Number Already Exists"});
+    }
+})
 
 
 

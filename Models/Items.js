@@ -1,6 +1,6 @@
 
 
-const mongoose=require('mongoose')
+
 
 
 require ("dotenv").config()
@@ -16,6 +16,7 @@ const itemSchema = new mongoose.Schema({
         owner:{type:String,required:true},
         contact:{type:String,required:true},
         ownerEmail:{type:String,required:true},
+        hostel:{type:String,default:""},
     },
 
     img_address:{type:String,required:true},
