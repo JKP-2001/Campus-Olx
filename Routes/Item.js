@@ -145,7 +145,8 @@ router.post("/newItem/:cat", fetchuser, async (req, res) => {           // POST 
                 img_address: img_address,
                 creation_date: creation_date,
                 creation_time: creation_time,
-                getFull: getFull
+                getFull: getFull,
+                is_banned:user.is_banned
 
             });
             const url = "http://localhost:5000/" + img_path;      // the url of the image uploaded in the server as a response.
@@ -161,7 +162,7 @@ router.post("/newItem/:cat", fetchuser, async (req, res) => {           // POST 
 
 router.get("/allitems/:cat", async (req, res) => {            // Extracting items of a particular category.
     const category = req.params.cat;                   // Requested the category in the parameter.
-    const items = await Item.find({ category: category });
+    const items = await Item.find({ category: category, is_banned:false});
     res.status(200).send(items);
 });
 
@@ -202,7 +203,7 @@ router.delete("/delItem/:id", fetchuser, async (req, res) => {       // Deleting
 
 router.get("/getItem/:id", fetchuser, async (req, res) => {         // getting item from the id of the item.
     const id = req.params.id;                    // id of item is in the parameter.
-    const item = await Item.find({_id:id});        // finding Item in the DB.
+    const item = await Item.find({_id:id,is_banned:false});        // finding Item in the DB.
 
     if (item) {
         res.status(200).send(item);
@@ -215,7 +216,7 @@ router.get("/getItem/:id", fetchuser, async (req, res) => {         // getting i
 
 
 router.get("/getAllItem", async (req, res) => {       // getting all the items at same time.
-    const items = await Item.find();
+    const items = await Item.find({is_banned:false});
     res.status(200).send(items);
 });
 

@@ -15,6 +15,8 @@ const Items = require("../Models/Items");
 
 const {google} = require('googleapis');
 
+
+
 const oAuthClient = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CLIENT_SECRET,process.env.REDIRECT_URI )
 oAuthClient.setCredentials({refresh_token:process.env.REFRESH_TOKEN})
 
@@ -67,6 +69,7 @@ const fetchuser = require("../Middleware/fetchuser");
 
 
 const JWT_SECRET = process.env.JWT_SECRET;    // JWT secret from .env file
+
 
 
 
@@ -249,6 +252,9 @@ router.post("/login",[
     if(!user){
         res.status(402).send({err:"User Not Exisited"});
     }
+    else if(user.is_banned){
+        res.status(401).send({err:"Banned"});
+    }
     else{
         bcrypt.compare(req.body.password,user.password,(err,result)=>{
             if(result){
@@ -275,7 +281,7 @@ router.post("/resetpassword-email",[
     }
     else{
 
-        const body = `Hello ${user.name}, Somebody requested a new password for the https://campus-olx.com account associated with ${user.email}.\n\n No changes have been made to your account yet.\n\nYou can reset your password by clicking the link below:\nhttp://localhost:5000/api/auth/resettingpassword/${user.email}/${user.token}  \n\nIf you did not request a new password, please let us know immediately by replying to this email.\n\n Yours, \nThe Campus Olx Team`
+        const body = `Hello ${user.name}, Somebody requested a new password for the https://campus-olx.com account associated with ${user.email}.\n\n No changes have been made to your account yet.\n\nYou can reset your password by clicking the link below:\nhttp://localhost:3000/reset-set-password/${user.email}/${user.token}  \n\nIf you did not request a new password, please let us know immediately by replying to this email.\n\n Yours, \nThe Campus Olx Team`
         const email = req.body.email;
         const subject = 'Password Change Request'
         sendEmail(email,body,subject)

@@ -9,7 +9,9 @@ const userSchema = new mongoose.Schema({
     seckey:{type:String,required:true,default:process.env.JWT_SECRET},
     contact:{type:String,required:true},
     hostel:{type:String,default:"Choose"},
-    item_liked:[{type:mongoose.Schema.Types.ObjectId,default:[]}]
+    item_liked:[{type:mongoose.Schema.Types.ObjectId,default:[]}],
+    is_banned:{type:Boolean,required:true,default:false},
+    is_admin:{type:Boolean,required:true,default:false}
 })
 
 

@@ -26,6 +26,7 @@ const itemSchema = new mongoose.Schema({
     getFull:{type:String},
     updation_date:{type:String,required:false},
     updation_time:{type:String,required:false},
+    is_banned:{type:Boolean,required:true,default:false},
 })
 
 
