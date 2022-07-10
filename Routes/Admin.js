@@ -15,14 +15,15 @@ const jwt = require("jsonwebtoken")
 
 
 const setitembanned = async (items) => {
-    console.log(items);
+    // console.log(items);
     for (var i = 0; i < items.length; i++) {
         const item = await Items.findById(items[i]._id);
         if (item) {
+            console.log(item)
             if (item.is_banned) {
-                const updateItem = await Items.findByIdAndUpdate(items[i]._id, { is_banned: false });
+                const updateItem = await Items.findByIdAndUpdate(item._id, { is_banned: false });
             } else {
-                const updateItem = await Items.findByIdAndUpdate(items[i]._idzz, { is_banned: true });
+                const updateItem = await Items.findByIdAndUpdate(item._id, { is_banned: true });
             }
         }
     }
